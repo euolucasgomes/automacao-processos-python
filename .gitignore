@@ -1,2 +1,4 @@
 .env
 myenv
+email_pastas.db
+inserir_pastas.py

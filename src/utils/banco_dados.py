@@ -4,10 +4,20 @@ import sqlite3
 class BancoDeDados:
     def __init__(self, db_name="email_pastas.db"):
         """
-        Inicializa a conexão com o banco de dados.
+        Inicializa a conexão com o banco de dados e garante que o diretório 'data' exista.
         """
-        # Define o caminho do banco na pasta 'data'
-        db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", db_name)
+        # Caminho base do projeto
+        base_dir = os.path.dirname(os.path.dirname(__file__))  # Diretório principal do projeto
+        data_dir = os.path.join(base_dir, "data")  # Diretório 'data'
+
+        # Garante que o diretório 'data' exista
+        os.makedirs(data_dir, exist_ok=True)
+
+        # Caminho completo do banco de dados
+        db_path = os.path.join(data_dir, db_name)
+        print(f"Conectando ao banco de dados em: {db_path}")
+
+        # Inicializa a conexão
         self.conn = sqlite3.connect(db_path)
         self.criar_tabela()
 
@@ -39,3 +49,21 @@ class BancoDeDados:
                     print(f"Pasta '{pasta}' já existe no banco de dados.")
         print("Todas as pastas foram processadas para inserção.")
 
+    def listar_todas_pastas(self):
+        """
+        Lista todas as pastas no banco de dados.
+        :return: Lista de tuplas contendo (id, nome_pasta, status).
+        """
+        with self.conn:
+            cursor = self.conn.execute("SELECT * FROM pastas")
+            pastas = cursor.fetchall()
+            return pastas
+
+
+
+    def fechar_conexao(self):
+        """
+        Fecha a conexão com o banco de dados.
+        """
+        self.conn.close()
+        print("Conexão com o banco de dados fechada.")
