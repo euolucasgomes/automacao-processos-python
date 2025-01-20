@@ -1,52 +1,55 @@
-from banco_dados import BancoDeDados
-from email_automation.EmailAutomation import EmailAutomation
+import sys
+import os
+import time
 from email_automation.WebDriver import WebDriver
 from email_automation.Login import Login
-import os
+from email_automation.EmailAutomation import EmailAutomation
 from dotenv import load_dotenv
+
+# Adiciona o diretório principal ao PYTHONPATH
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Carrega variáveis de ambiente
 load_dotenv()
 email = os.getenv("EMAIL")
 password = os.getenv("PASSWORD")
 
-def main():
+if __name__ == "__main__":
     # Inicializa o WebDriver
     webdriver_instance = WebDriver()
     driver = webdriver_instance.iniciar_webdriver()
 
-    # Inicializa as classes
-    login = Login(driver)
-    email_automation = EmailAutomation(driver)
-    banco = BancoDeDados()
+    if driver:
+        print("WebDriver inicializado com sucesso!")
 
-    try:
         # Realiza login
-        login.realizar_login(email, password)
+        login_instance = Login(driver)
+        if email and password:
+            print("Iniciando o login...")
+            login_instance.realizar_login(email, password)
+            time.sleep(5)  # Aguarda após o login
+        else:
+            print("Erro: Variáveis de ambiente EMAIL e PASSWORD não configuradas.")
+            driver.quit()
+            sys.exit()
 
-        # Processa as pastas do banco de dados
-        while True:
-            pasta = banco.buscar_proxima_pasta()
-            if not pasta:
-                print("Todas as pastas foram processadas!")
-                break
+        # Instancia a classe EmailAutomation
+        email_automation = EmailAutomation(driver)
 
-            pasta_id, nome_pasta = pasta
-            print(f"Processando pasta: {nome_pasta}")
+        # Caminho do banco de dados
+        db_path = os.path.join(
+            os.path.dirname(__file__), "data", "email_pastas.db"
+        )
 
-            try:
-                email_automation.clicar_na_pasta(nome_pasta)
-                email_automation.clicar_email_e_baixar_anexo()
-                banco.marcar_pasta_concluida(pasta_id)
-            except Exception as e:
-                print(f"Erro ao processar a pasta '{nome_pasta}': {e}")
-
-    except Exception as e:
-        print(f"Erro inesperado durante o processamento: {e}")
-    finally:
-        banco.fechar_conexao()
-        print("Conexão com o banco de dados fechada.")
-        print("Feche o navegador manualmente.")
-
-if __name__ == "__main__":
-    main()
+        # Processa todas as pastas no banco de dados
+        try:
+            email_automation.clicar_em_todas_as_pastas(driver, db_path)
+        except Exception as e:
+            print(f"Erro durante o processamento das pastas: {e}")
+        finally:
+            print("Processo concluído. O navegador permanecerá aberto por 30 segundos.")
+            time.sleep(30)  # Permite inspeção manual
+            driver.quit()
+            print("Navegador encerrado.")
+    else:
+        print("Falha ao iniciar o WebDriver.")

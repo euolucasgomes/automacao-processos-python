@@ -38,7 +38,7 @@ class BancoDeDados:
     def inserir_pastas(self, pastas):
         """
         Insere uma lista de pastas na tabela.
-        :param pastas: Lista de nomes de pastas (ex: ["Pasta 1", "Pasta 2"])
+        :param pastas: Lista de nomes de pastas (ex: ["Pasta 1", "Pasta 2"]).
         """
         with self.conn:
             for pasta in pastas:
@@ -49,6 +49,24 @@ class BancoDeDados:
                     print(f"Pasta '{pasta}' já existe no banco de dados.")
         print("Todas as pastas foram processadas para inserção.")
 
+    def buscar_proxima_pasta(self):
+        """
+        Busca a próxima pasta com status 'pendente'.
+        :return: Tupla (id, nome_pasta) ou None se não houver pastas pendentes.
+        """
+        with self.conn:
+            cursor = self.conn.execute("SELECT id, nome_pasta FROM pastas WHERE status = 'pendente' LIMIT 1")
+            return cursor.fetchone()  # Retorna a próxima pasta pendente ou None
+
+    def marcar_pasta_concluida(self, pasta_id):
+        """
+        Marca uma pasta como concluída no banco de dados.
+        :param pasta_id: ID da pasta a ser marcada como concluída.
+        """
+        with self.conn:
+            self.conn.execute("UPDATE pastas SET status = 'concluida' WHERE id = ?", (pasta_id,))
+            print(f"Pasta ID {pasta_id} marcada como concluída.")
+
     def listar_todas_pastas(self):
         """
         Lista todas as pastas no banco de dados.
@@ -58,8 +76,6 @@ class BancoDeDados:
             cursor = self.conn.execute("SELECT * FROM pastas")
             pastas = cursor.fetchall()
             return pastas
-
-
 
     def fechar_conexao(self):
         """
