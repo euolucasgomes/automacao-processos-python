@@ -43,10 +43,12 @@ if __name__ == "__main__":
 
         # Processa todas as pastas no banco de dados
         try:
-            email_automation.clicar_em_todas_as_pastas(driver, db_path)
+            print("Iniciando o processamento de pastas...")
+            email_automation.clicar_em_todas_as_pastas(db_path)
         except Exception as e:
             print(f"Erro durante o processamento das pastas: {e}")
         finally:
+            # Encerramento seguro
             print("Processo concluído. O navegador permanecerá aberto por 30 segundos.")
             time.sleep(30)  # Permite inspeção manual
             driver.quit()
