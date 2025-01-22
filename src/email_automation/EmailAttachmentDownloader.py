@@ -13,6 +13,7 @@ class EmailAttachmentDownloader:
     def clicar_email_e_baixar_anexo(self, prefixo_pasta):
         """
         Localiza o email desejado, verifica a data do mês corrente, e baixa o anexo se a condição for atendida.
+        Após a execução, tenta voltar para a página anterior.
         """
         try:
             print("Procurando pelo email com as condições especificadas...")
@@ -21,6 +22,8 @@ class EmailAttachmentDownloader:
             emails = WebDriverWait(self.driver, 30).until(
                 EC.presence_of_all_elements_located((By.XPATH, "//tr[contains(@class, 'message')]")
             ))
+
+            encontrou_email = False
 
             for email in emails:
                 # Verifica se a linha do email possui a classe 'message selected focused'
@@ -34,6 +37,7 @@ class EmailAttachmentDownloader:
                     href = link.get_attribute("href")
 
                     if prefixo_pasta in href:
+                        encontrou_email = True
                         # Role para o elemento e clique nele para abrir o email
                         self.driver.execute_script("arguments[0].scrollIntoView(true);", link)
                         WebDriverWait(self.driver, 10).until(EC.visibility_of(link))
@@ -57,13 +61,21 @@ class EmailAttachmentDownloader:
                             self.driver.execute_script("arguments[0].click();", anexo)
 
                             print("Anexo encontrado e clicado com sucesso!")
-                            return  # Encerra após concluir a tarefa
                         else:
                             print("Email fora do mês corrente. Ignorando.")
 
-            print("Nenhum email com as condições especificadas foi encontrado.")
+                        # Tenta voltar à lista de emails
+                        self.voltar_pagina()
+                        return  # Encerra após concluir a tarefa
+
+            if not encontrou_email:
+                print("Nenhum email com as condições especificadas foi encontrado.")
+                # Volta para a lista de emails, caso não encontre o email
+                self.voltar_pagina()
         except Exception as e:
             print(f"Erro durante o processo: {e}")
+            # Volta para a lista de emails, caso ocorra erro
+            self.voltar_pagina()
 
     def verificar_data_email(self):
         """
@@ -91,3 +103,18 @@ class EmailAttachmentDownloader:
         except Exception as e:
             print(f"Erro ao verificar a data do email: {e}")
             return False
+
+    def voltar_pagina(self):
+        """
+        Clica no elemento com class="mail selected" e role="button" para retornar à lista de emails.
+        """
+        try:
+            print("Tentando voltar para a lista de emails...")
+            voltar_botao = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//div[@class='mail selected' and @role='button']"))
+            )
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", voltar_botao)
+            voltar_botao.click()
+            print("Retornou à lista de emails com sucesso.")
+        except Exception as e:
+            print(f"Erro ao tentar voltar para a lista de emails: {e}")
