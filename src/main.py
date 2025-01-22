@@ -3,8 +3,14 @@ import os
 import time
 from email_automation.WebDriver import WebDriver
 from email_automation.Login import Login
-from email_automation.EmailAutomation import EmailAutomation
+from email_automation.PastaAutomator import PastaAutomator  # Atualizado para usar a nova classe
+from email_automation.EmailClicker import EmailClicker  # Importa a nova classe
+from email_automation.EmailAttachmentDownloader import EmailAttachmentDownloader  # Importa a nova classe
 from dotenv import load_dotenv
+import logging
+
+# Configuração do logging para ignorar mensagens de erro
+logging.basicConfig(level=logging.ERROR)
 
 # Adiciona o diretório principal ao PYTHONPATH
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -33,20 +39,40 @@ if __name__ == "__main__":
             driver.quit()
             sys.exit()
 
-        # Instancia a classe EmailAutomation
-        email_automation = EmailAutomation(driver)
-
         # Caminho do banco de dados
         db_path = os.path.join(
             os.path.dirname(__file__), "data", "email_pastas.db"
         )
 
-        # Processa todas as pastas no banco de dados
+        # Instancia as classes PastaAutomator, EmailClicker e EmailAttachmentDownloader
+        pasta_automator = PastaAutomator(driver, db_path)
+        email_clicker = EmailClicker(driver)
+        attachment_downloader = EmailAttachmentDownloader(driver)
+
+        # Processa todas as pastas e clica no email em cada uma
         try:
-            print("Iniciando o processamento de pastas...")
-            email_automation.clicar_em_todas_as_pastas(db_path)
+            print("Iniciando o processamento de pastas e emails...")
+            conn = pasta_automator.conectar_banco()
+            if conn:
+                pastas = pasta_automator.buscar_pastas(conn)
+                if pastas:
+                    for nome_pasta in pastas:
+                        prefixo_pasta = nome_pasta.split(' - ')[0]  # Obtém o prefixo da pasta
+                        pasta_automator.clicar_na_pasta(nome_pasta)
+                        try:
+                            email_clicker.clicar_no_email()
+                            attachment_downloader.clicar_email_e_baixar_anexo(prefixo_pasta)
+                        except Exception as e:
+                            logging.error(f"Erro ao processar email na pasta '{nome_pasta}': {e}")
+                        print("Aguardando 10 segundos antes de processar a próxima pasta...")
+                        time.sleep(10)
+                else:
+                    print("Nenhuma pasta encontrada no banco de dados.")
+                conn.close()
+            else:
+                print("Erro ao conectar ao banco de dados.")
         except Exception as e:
-            print(f"Erro durante o processamento das pastas: {e}")
+            logging.error(f"Erro durante o processamento: {e}")
         finally:
             # Encerramento seguro
             print("Processo concluído. O navegador permanecerá aberto por 30 segundos.")
