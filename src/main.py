@@ -4,8 +4,10 @@ import time
 from email_automation.WebDriver import WebDriver
 from email_automation.Login import Login
 from email_automation.PastaAutomator import PastaAutomator  # Atualizado para usar a nova classe
-from email_automation.EmailClicker import EmailClicker  # Importa a nova classe
-from email_automation.EmailAttachmentDownloader import EmailAttachmentDownloader  # Importa a nova classe
+from email_automation.EmailSearcher import EmailSearcher  # Nova classe para busca de emails
+from email_automation.EmailDateVerifier import EmailDateVerifier  # Nova classe para verificação de data
+from email_automation.EmailAttachmentDownloader import EmailAttachmentDownloader  # Nova classe para download de anexos
+from email_automation.EmailNavigator import EmailNavigator  # Nova classe para navegação
 from dotenv import load_dotenv
 import logging
 
@@ -44,10 +46,12 @@ if __name__ == "__main__":
             os.path.dirname(__file__), "data", "email_pastas.db"
         )
 
-        # Instancia as classes PastaAutomator, EmailClicker e EmailAttachmentDownloader
+        # Instancia as classes PastaAutomator, EmailSearcher, EmailDateVerifier, EmailAttachmentDownloader e EmailNavigator
         pasta_automator = PastaAutomator(driver, db_path)
-        email_clicker = EmailClicker(driver)
+        email_searcher = EmailSearcher(driver)
+        date_verifier = EmailDateVerifier(driver)
         attachment_downloader = EmailAttachmentDownloader(driver)
+        email_navigator = EmailNavigator(driver)
 
         # Processa todas as pastas e clica no email em cada uma
         try:
@@ -60,10 +64,38 @@ if __name__ == "__main__":
                         prefixo_pasta = nome_pasta.split(' - ')[0]  # Obtém o prefixo da pasta
                         pasta_automator.clicar_na_pasta(nome_pasta)
                         try:
-                            email_clicker.clicar_no_email()
-                            attachment_downloader.clicar_email_e_baixar_anexo(prefixo_pasta)
+                            print(f"Procurando emails na pasta: {nome_pasta}")
+                            link_email = email_searcher.localizar_email(prefixo_pasta)
+
+                            if link_email:
+                                # Clica no email
+                                driver.execute_script("arguments[0].scrollIntoView(true);", link_email)
+                                time.sleep(1)
+                                link_email.click()
+                                print("Email aberto.")
+
+                                # Aguarda o carregamento completo do email
+                                time.sleep(3)
+
+                                # Verifica a data do email
+                                if date_verifier.verificar_data_email():
+                                    print("Data do email dentro do mês corrente. Baixando anexo...")
+                                    attachment_downloader.baixar_anexo()
+                                else:
+                                    print("Data do email fora do mês corrente. Ignorando.")
+
+                            else:
+                                print("Nenhum email encontrado com o prefixo especificado nesta pasta.")
+
                         except Exception as e:
                             logging.error(f"Erro ao processar email na pasta '{nome_pasta}': {e}")
+
+                        # Volta para a página das pastas após processar o email, independentemente de sucesso ou erro
+                        try:
+                            email_navigator.voltar_pagina()
+                        except Exception as e:
+                            logging.error(f"Erro ao voltar para a lista de pastas: {e}")
+
                         print("Aguardando 10 segundos antes de processar a próxima pasta...")
                         time.sleep(10)
                 else:
